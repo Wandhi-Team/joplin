@@ -1,22 +1,14 @@
 import Setting from '@joplin/lib/models/Setting';
-const { Platform } = require('react-native');
+import { Platform, TextStyle, ViewStyle } from 'react-native';
 import { themeById } from '@joplin/lib/theme';
+import { Theme as BaseTheme } from '@joplin/lib/themes/type';
 
-export interface Style {
-	[key: string]: any;
-}
-
-interface Fonts {
-	[key: number]: string;
-}
-
-interface ThemeCache {
-	[key: string]: any;
-}
+const Color = require('color');
 
 const baseStyle = {
 	appearance: 'light',
 	fontSize: 16,
+	fontSizeLarge: 20,
 	noteViewerFontSize: 16,
 	margin: 15, // No text and no interactive component should be within this margin
 	itemMarginTop: 10,
@@ -26,67 +18,115 @@ const baseStyle = {
 	lineHeight: '1.6em',
 };
 
-const themeCache_: ThemeCache = {};
+export type ThemeStyle = BaseTheme & typeof baseStyle & {
+	backgroundColorHover4: string;
 
-function addExtraStyles(style: Style) {
-	style.marginRight = style.margin;
-	style.marginLeft = style.margin;
-	style.marginTop = style.margin;
-	style.marginBottom = style.margin;
+	fontSize: number;
+	fontSizeSmaller: number;
+	marginRight: number;
+	marginLeft: number;
+	marginTop: number;
+	marginBottom: number;
+	borderRadius: number;
+	icon: TextStyle;
+	lineInput: ViewStyle;
+	buttonRow: ViewStyle;
+	normalText: TextStyle;
+	urlText: TextStyle;
+	headerStyle: TextStyle;
+	headerWrapperStyle: ViewStyle;
+	rootStyle: ViewStyle;
+	hiddenRootStyle: ViewStyle;
+	keyboardAppearance: 'light'|'dark';
+};
 
-	style.icon = {
-		color: style.color,
+const themeCache_: Record<string, ThemeStyle> = {};
+
+function extraStyles(theme: BaseTheme) {
+	const icon: TextStyle = {
+		color: theme.color,
 		fontSize: 30,
 	};
 
-	style.lineInput = {
-		color: style.color,
-		backgroundColor: style.backgroundColor,
+	const lineInput: TextStyle = {
+		color: theme.color,
+		backgroundColor: theme.backgroundColor,
 		borderBottomWidth: 1,
-		borderColor: style.dividerColor,
+		borderColor: theme.dividerColor,
 		paddingBottom: 0,
 	};
 
 	if (Platform.OS === 'ios') {
-		delete style.lineInput.borderBottomWidth;
-		delete style.lineInput.borderColor;
+		delete lineInput.borderBottomWidth;
+		delete lineInput.borderColor;
 	}
 
-	style.buttonRow = {
+	const buttonRow: ViewStyle = {
 		flexDirection: 'row',
 		borderTopWidth: 1,
-		borderTopColor: style.dividerColor,
+		borderTopColor: theme.dividerColor,
 		paddingTop: 10,
 	};
 
-	style.normalText = {
-		color: style.color,
-		fontSize: style.fontSize,
+	const fontSize = baseStyle.fontSize;
+	const normalText: TextStyle = {
+		color: theme.color,
+		fontSize: fontSize,
 	};
 
-	style.urlText = {
-		color: style.urlColor,
-		fontSize: style.fontSize,
+	const urlText: TextStyle = {
+		color: theme.urlColor,
+		fontSize,
 	};
 
-	style.headerStyle = {
-		color: style.color,
-		fontSize: style.fontSize * 1.2,
+	const headerStyle: TextStyle = {
+		color: theme.color,
+		fontSize: fontSize * 1.2,
 		fontWeight: 'bold',
 	};
 
-	style.headerWrapperStyle = {
-		backgroundColor: style.headerBackgroundColor,
+	const headerWrapperStyle: TextStyle = {
+		backgroundColor: theme.headerBackgroundColor,
 	};
 
-	style.keyboardAppearance = style.appearance;
+	const rootStyle: ViewStyle = {
+		flex: 1,
+		backgroundColor: theme.backgroundColor,
+	};
 
-	return style;
+	const hiddenRootStyle: ViewStyle = {
+		...rootStyle,
+		flex: 0.001, // This is a bit of a hack but it seems to work fine - it makes the component invisible but without unmounting it
+	};
+
+	return {
+		marginRight: baseStyle.margin,
+		marginLeft: baseStyle.margin,
+		marginTop: baseStyle.margin,
+		marginBottom: baseStyle.margin,
+
+		icon,
+		lineInput,
+		buttonRow,
+		normalText,
+		urlText,
+		headerStyle,
+		headerWrapperStyle,
+		rootStyle,
+		hiddenRootStyle,
+
+		keyboardAppearance: theme.appearance,
+		color5: theme.color5 ?? theme.backgroundColor4,
+		backgroundColor5: theme.backgroundColor5 ?? theme.color4,
+
+		backgroundColorHover4: Color(theme.color4).alpha(0.12).rgb().string(),
+		borderRadius: 24,
+	};
 }
 
-export function editorFont(fontId?: number) {
+function editorFont(fontId: number) {
 	// IMPORTANT: The font mapping must match the one in Setting.js
-	const fonts: Fonts = {
+	const fonts: Record<number, string|null> = {
 		[Setting.FONT_DEFAULT]: null,
 		[Setting.FONT_MENLO]: 'Menlo',
 		[Setting.FONT_COURIER_NEW]: 'Courier New',
@@ -100,7 +140,7 @@ export function editorFont(fontId?: number) {
 	return fonts[fontId];
 }
 
-export function themeStyle(theme?: number) {
+function themeStyle(theme: number) {
 	if (!theme) {
 		console.warn('Theme not set! Defaulting to Light theme.');
 		theme = Setting.THEME_LIGHT;
@@ -109,7 +149,14 @@ export function themeStyle(theme?: number) {
 	const cacheKey = [theme].join('-');
 	if (themeCache_[cacheKey]) return themeCache_[cacheKey];
 
-	const output = Object.assign({}, baseStyle, themeById(theme));
-	themeCache_[cacheKey] = addExtraStyles(output);
+	const baseTheme = themeById(theme);
+	const output: ThemeStyle = {
+		...baseStyle,
+		...baseTheme,
+		...extraStyles(baseTheme),
+	};
+	themeCache_[cacheKey] = output;
 	return themeCache_[cacheKey];
 }
+
+export { themeStyle, editorFont };

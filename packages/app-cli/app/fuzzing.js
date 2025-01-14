@@ -1,7 +1,7 @@
 'use strict';
 
 const time = require('@joplin/lib/time').default;
-const Logger = require('@joplin/lib/Logger').default;
+const Logger = require('@joplin/utils/Logger').default;
 const Resource = require('@joplin/lib/models/Resource').default;
 const { dirname } = require('@joplin/lib/path-utils');
 const FsDriverNode = require('@joplin/lib/fs-driver-node').default;
@@ -36,9 +36,10 @@ async function createClients() {
 		const client = createClient(clientId);
 		promises.push(fs.remove(client.profileDir));
 		promises.push(
+			// eslint-disable-next-line promise/prefer-await-to-then -- Old code before rule was applied
 			execCommand(client, 'config sync.target 2').then(() => {
 				return execCommand(client, `config sync.2.path ${syncDir}`);
-			})
+			}),
 		);
 		output.push(client);
 	}
@@ -2324,10 +2325,12 @@ async function main() {
 		clients[clientId].activeCommandCount++;
 
 		execRandomCommand(clients[clientId])
+		// eslint-disable-next-line promise/prefer-await-to-then -- Old code before rule was applied
 			.catch(error => {
 				logger.info(`Client ${clientId}:`);
 				logger.error(error);
 			})
+		// eslint-disable-next-line promise/prefer-await-to-then -- Old code before rule was applied
 			.then(r => {
 				if (r) {
 					logger.info(`Client ${clientId}:\n${r.trim()}`);

@@ -1,5 +1,5 @@
 import { Link } from '../MdToHtml';
-import { toForwardSlashes } from '../pathUtils';
+import { toForwardSlashes } from '@joplin/utils/path';
 import { LinkIndexes } from './rules/link_close';
 const Entities = require('html-entities').AllHtmlEntities;
 const htmlentities = new Entities().encode;
@@ -11,11 +11,17 @@ export interface Options {
 	useCustomPdfViewer: boolean;
 	noteId: string;
 	vendorDir: string;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Old code before rule was applied
 	theme: any;
 }
 
 function resourceUrl(resourceFullPath: string): string {
-	if (resourceFullPath.indexOf('http://') === 0 || resourceFullPath.indexOf('https://')) return resourceFullPath;
+	if (
+		resourceFullPath.indexOf('http://') === 0 || resourceFullPath.indexOf('https://') === 0 || resourceFullPath.indexOf('joplin-content://') === 0 ||
+		resourceFullPath.indexOf('file://') === 0
+	) {
+		return resourceFullPath;
+	}
 	return `file://${toForwardSlashes(resourceFullPath)}`;
 }
 
@@ -69,7 +75,7 @@ export default function(link: Link, options: Options, linkIndexes: LinkIndexes) 
 
 			return `<iframe src="${src}" x-url="${escapedResourcePath}" 
 			x-appearance="${options.theme.appearance}" ${anchorPageNo ? `x-anchorPage="${anchorPageNo}"` : ''} id="${id}"
-			x-type="mini"
+			x-type="mini" x-resourceid="${resourceId}"
 		 class="media-player media-pdf"></iframe>`;
 		}
 
